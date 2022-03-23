@@ -1,15 +1,15 @@
 {
-  "name": "learning-node",
+  "name": "invoiceAPI",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
-    "test": "coming soon"
+    "test": "this app is coming soon"
   },
   "keywords": [],
-  "author": "abayomi ajao <roshbon@gmail.com>",
+  "author": "taofeeq <taofeeqadedokun@gmail.com>",
   "license": "ISC",
   "dependencies": {
     "@sendgrid/mail": "^7.6.0",

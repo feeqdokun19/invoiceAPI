@@ -6,8 +6,6 @@ const morgan = require('morgan')
 const displayRoutes = require('express-routemap')
 const mySqlConnection = require('./config/mysql')
 const userRoutes = require('./routes/users.routes')
-const billPaymentRoutes = require('./routes/bills_payments.routes')
-// const AppRoutes = require('./routes')
 const port = process.env.PORT
 
 // parse application/json
@@ -15,41 +13,40 @@ app.use(bodyParser.json())
 
 
 app.listen(port, () => {
-    console.log(`i am listening on ${port}`)
+    console.log(`Invoicing is listening on ${port}`)
     displayRoutes(app)
+
+    mySqlConnection.connect(err => {
+        
+        if (err)  
+        // connected successfully and if error occurs, it return back to the user with error message
+       console.log('successfully connected: ' , mySqlConnection.threadId)
+      })
 })
 
-mySqlConnection.connect(err => {
-    if (err) throw err.stack
-    // connected!
-    console.log('successfully connected: ' , mySqlConnection.threadId)
-  })
+   
 
 
 app.use(morgan('combined'))
 app.use(userRoutes)
-app.use(billPaymentRoutes)
-//app.use(AppRoutes)
-
+ 
 
 app.get('/', (req, res) => {
     
     res.status(200).send({
-        status: "error",
-        message: "Welcome guys",
+        status: "success",
+        message: "Welcome Alaayemi, Odape ori e wanbe. Saa do something",
         data: []
     })
 
 })
 
-/*
-    Error 404
-*/
+//Todo App default display to users
 app.use((req, res, next) => {
 
-        res.status(404).send({
-            status: "error",
-            message: "Seems you got lost. so sorry"
-        })
+    res.status(404).send({
+        status: "error",
+        message: "Hey Alaaye! Kilofeeh? Please get yourself familiar with our activities and move"
+    })
 
 })

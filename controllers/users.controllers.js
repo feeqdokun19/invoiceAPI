@@ -1,23 +1,26 @@
 require('dotenv').config()
 const { v4: uuidv4 } = require('uuid')
 const Joi = require('Joi')
-const smsServices = require('../services/sms.services')
+//const smsServices = require('../services/sms.services')
 const emailServices = require('../services/email.services')
 const usersModel = require('../models/users.models')
 const msgClass = require('../errors/error')
+const { Successful } = require('../errors/error')
+const { type } = require('express/lib/response')
+const req = require('express/lib/request')
 
 
 const error = []
 
 const generateOTP = ()=>{
 
-    return Math.floor(Math.random() * 10000)
+    return Math.floor(Math.random() * 30000)
 }
 
 
 const getUser = (req, res) => {
    
-    const { customer } = req.params
+    const { user } = req.params
    
         res.status(200).send({
             status: true,
@@ -27,235 +30,233 @@ const getUser = (req, res) => {
     
 }
 
-const createNewUser = async (req, res) => {
 
- 
-    const userSchema = Joi.object({
-        firstname: Joi.string().required(),
-        surname: Joi.string().required(),
-        email: Joi.string().email().required(),
-        phone: Joi.string(), //length(11).pattern(/^[0-9]+$/),
-        password: Joi.string().alphanum().required(),
-    })
+const createInvoice = async (req, res) => {
 
-    const validateUser = userSchema.validate(req.body)
-    if (validateUser.error) {
-        res.status(422).send({
-            status: false,
-            message: "Bad Request",
-            data: []
+        InvoiceOfItemToCreateSchema = Joi.object({
+            "Customer id": { uuid },
+            "amount": Joi.string().required(),
+            "due_date": "Seller SA",           
+            "description": joi.string().required(),
+            "line_items": joi.string().required(),
+            "tax": Joi.string().required(),
+            "currency": Joi.string().required(),
+            "send_notification": Joi.string().required(),
+            "draft": Joi.string().required(),
+            "has_invoice": Joi.string().required(),
+            "invoice_number": Joi.string().required(),
+            "split_code":Joi.string().required()
         })
-    }
-
-    const { email, firstname, surname, password, phone } = req.body
-    const customer_id = uuidv4()
-    const otp = generateOTP()
-    /**
-     * check if user email exist before creating a new user
-     * if email exist throw error
-     * else go ahead to create the user
-     */
-    /*
-    //.then.catch approach
-
-    usersModel.checkUser(email, phone)
-    .then(checkUserResult => {
-        if (checkUserResult != "") {
-            throw new Error(msgClass.CustomerExist)
-        }
-
-        return usersModel.newUser(email, firstname, surname, password, phone, customer_id)
-    })
-    .then(sendOtpResult => {
-       //send to db
-        return usersModel.insertOtp(customer_id,otp)
-    })
-    .then(newuserResult => {
-        return smsServices.sendSMS(phone, `Hello, your otp is ${otp}`)
-    })
-    .then(newOtpResult => {
-        res.status(200).send({
-            status: true,
-            message: msgClass.CustomerCreated,
-            data: []
-        })
-    })
-    .catch(checkUserErr => {
-        console.log(checkUserErr)
-            res.status(200).send({
-                status: false,
-                message:  checkUserErr.message || msgClass.GeneralError,
-                response: []
-         })
-     })
-     */
-    try {
-       const checkIfUserExists =  await usersModel.checkUser(email, phone)
-        if (checkIfUserExists != "") {
-            throw new Error(msgClass.CustomerExist)
-        }  
-        await usersModel.newUser(email, firstname, surname, password, phone, customer_id)
-        await usersModel.insertOtp(customer_id, otp)
-        //send otp to user after registration
-        await smsServices.sendSMS(phone, `Hello, your otp is ${otp}`)  
-       
-        const userFullname = `${firstname} ${surname}`
-        const dataReplacement = {
-            "fullname": userFullname,
-            "otp": otp
-        }
-
-        emailServices.readFileAndSendEmail (email, "OTP VERIFICATION", dataReplacement, 'otp')
         
-        res.status(200).send({
-            status: true,
-            message: msgClass.CustomerCreated,
-            data: []
-        })
-    } 
-    catch (err) {
-        console.log(`error: ${err.message}`)
-        res.status(200).send({
+    const validateInvoiceBeforeCreate = InvoiceOfItemToCreateSchema.validate(req.body)
+    if(validateInvoiceBeforeCreate.error)
+    throw new Error("Invoice is Invalid something went wrong, Please try again") ||
+    
+        res.status(201).send({
             status: false,
-            message:   err.message || msgClass.GeneralError
+            message: "Find attached your invoice below for reference",
+            data: []
 
-     })
-    }
-    
-    
-    
-    
+        })
 
-    // usersModel.newUser(email, firstname, surname, password, phone, customer_id)
-    // .then(userResult => {
-    //     console.log(userResult)
-    //     const otp = generateOTP()
- 
-    //     return smsServices.sendSMS(phone, `Hello, your otp is ${otp}`)
-    // })
-    // .then(otpResult => {
-    //     //console.log('i sent the otpp with response: ', (otpResult))
-    //     res.status(200).send({
-    //         status: true,
-    //         message: `${msgClass.CustomerCreated}. ${msgClass.OtpSentSuccessfully}`,
-    //         data: []
-    //     })
-    //  })
-    //     .catch(err => {
-    //        //console.log(err)
-    //     res.status(200).send({
-    //         status: false,
-    //         message: "Kindly try again later , This is on us",
-    //         response: []
-    //      })
-    // })
+    const{invoiceId, seller_name, buyer_name, item_1, amount, discount_kind, show_discount, sell_date} = req.body
+        invoiceId = uuidv4()
 
+    const createInvoiceModel = await paystack.invoiceItems.create({
+            customer: '{{CUSTOMER_ID}}',
+            price: '{{PRICE_ID}}',
+            collection_method: 'send_invoice',
+            days_until_due: 30
+          });
+
+    invoiceModel.createNewInvoice(invoiceId, seller_name, buyer_name, item_1, amount, discount_kind, show_discount, sell_date)
+
+    return axios({
+        method: "post",
+        url: `${process.env.PAYSTACK_BASE_URL}/invoice/${invoiceId}/validate?code=${customerId}&customer=${phoneNumber}`,
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${process.env.FLUTTERWAVE_SECRET_KEY}`
+        }
+    })
 }
 
-const verifyOTP = (req, res) => {
-
-    const { customer, email, otp } = req.params
-
-    // const OtpSchema = Joi.object({
-    //     params: {
-    //         customer: Joi.string().required(),
-    //         otp: Joi.string().required()
-    //     }
-    // })
-
-    // const validateOTP = OtpSchema.validate(req.params)
-    // if (validateOTP.error) {
-    //     res.status(422).send({
-    //         status: false,
-    //         message: msgClass.BadRequest,
-    //         data: []
-    //     })
-    // }
-
-    usersModel.getOtp(customer, otp)
-    .then(otpResult => {
-        //console.log("hereis otpResult: ", otpResult)
-        if (otpResult == "") {
-            throw new Error(msgClass.OtpMismatch)
-        }
-        
-        const elapsedTime = Date.now() -  otpResult[0].created_at
-        if ((Math.floor(elapsedTime / 60000) > process.env.OTPExpirationTime)) {
-            throw new Error(msgClass.OtpExpired)
-        }
-        //update datavad onis OTpverified
-        usersModel.deleteOTP(otp, otpResult[0].customer_id)
-        usersModel.updateOTPStatus(otpResult[0].customer_id)
-
-    })
-        .then(finalResponse => {
-            const dataToUpdate = {}
+const listInvoice = (req, res) => {
+    //const{customerID, status, currency, invoiceId } = req.params
+        page = req.params.page 
+        perPage = req.params.perPage
+      
+    console.log(`Customer Invoice ${JSON.stringify(process.env.PAYSTACK_SECRET_KEY)}`)
     
-            emailServices.readFileAndSendEmail (email, "WELCOME ONBOARD", dataToUpdate, 'welcome')
-            
-        res.status(200).send({
-            status: false,
-            message: msgClass.OtpVerificationSuccessful,
-            data: []
-        })
-    })
-    .catch(err => {
-        res.status(400).send({
-            status: false,
-            message: err.message || msgClass.GeneralError,
-            data: []
-        })
-    })
+        return axios({
+                        method: "get",
+                        url: `${process.env.PAYSTACK_BASE_URL}/invoice/listCustomer'sInvoice`,
+                        headers: {
+                            "Content-Type": "application/json",
+                            "Authorization": `Bearer ${process.env.PAYSTACK_SECRET_KEY}`
+                        }
+                    })
 
-
-
+    /*         try{
+                const invoiceListResponse = await InvoiceService.listInvoice(invoiceID)
+                if (InvoiceService.data.data.status = ! true){
+                    throw new Error("Cannot print this revoice. session timed out contact support '")
+                }
+            }
+            catch(err){
+                res.status(201).send({
+                    status: true,
+                    message: "Invoice Successfully generated",
+                    response: listInvoice.data.data
+                })
+            } */
+   
 }
+     
+const viewInvioce = (req, res) => {
 
-
-const updateUser = () => {
-
+    const { invoiceID } = req.params
+    const invoice = generateNewInvoice()
+   try{
+       viewInvioceFromServices.sendInvoice(invoice, `Find your invoivice below: ${generateNewInvoice}`)
+       res.status(201).send({
+        status: false,
+        message: "Find attached your invoice below for reference",
+        response: []
+    })
+   }
+   catch (err) {
+    console.log(err)
     res.status(200).send({
         status: true,
-        message: "Account successfully updated",
+        message: msgClass.GeneralError,
         data: []
     })
 }
 
+// or this 
 
-const resendOtp =   async (req, res) => {
-    const { phone } = req.params
-    const otp = generateOTP()
+  return axios({
+        method: "get",
+        url: `${process.env.PAYSTACK_BASE_URL}/invoice/viewInvioce/NG`,
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${process.env.PAYSTACK_SECRET_KEY}`
+        }
+    }) 
+     
     
-    try {
-
-        const userDetails = await usersModel.getUserDetailsByPhone(phone)
-        await usersModel.deleteOTPByCustomerID(userDetails[0].customer_id)
-        await usersModel.insertOtp(userDetails[0].customer_id, otp)
-        await smsServices.sendSMS(phone, `Hello, your new otp is ${otp}`)
-        
-        res.status(200).send({
-            status: true,
-            message: msgClass.OtpResentSentSuccessfully,
-            data: []
-        })
-
-    } catch (err) {
-        console.log(err)
-        res.status(200).send({
-            status: true,
-            message: msgClass.GeneralError,
-            data: []
-        })
-    }
-
-
-  
 }
 
+const verifyInvioce = async(req, res) => {
+ 
+     const { invoiceId } = req.params
+    if (invoiceId.error) {
+         res.status(422).send({
+             status: false,
+           message: msgClass.BadRequest || `Invoice ${invoiceId} is incorrect`,
+             data: []
+         })
+     }
+
+    // or
+     try {
+ 
+         const ResponseFromIvoiceVerification = await paymentService.verifyPayment(payment_ref)
+         if (ResponseFromIvoiceVerification.data.data.status != "success") {
+             throw new Error("We could not verify the this invoice on our system.")
+         }
+         
+         res.status(200).send({
+             status: true,
+             message: "This invoice generated successfully",
+             data: ResponseFrominvoiceVerification.data.data
+         })
+     } 
+     catch(err) {
+          res.status(400).send({
+             status: false,
+             message:   "Find attached your invoice below for reference" || msgClass.GeneralError
+ 
+      })
+     }
+     
+    
+}
+
+const sendNotification = async (req, res) => {
+
+    const { email, phone } = req.params
+
+    if (createInvoice != '')
+       
+        try{
+            await InvoiceOfItemToCreateInModel.getInvoiceByPhoneAndEmail(email, phone);
+        }
+        catch (err) {
+            res.status(200).send({
+                status: true,
+                message:"Notification cannot tbe send to user",
+                data: []
+            })
+        }
+        return axios({
+            method: "get",
+            url: `${process.env.PAYSTACK_BASE_URL}/invoice/viewInvioce/NG`,
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${process.env.PAYSTACK_SECRET_KEY}`
+            }
+        })         
+}
+
+const FinalizeInvoice = async (req, res) => {
+    const { customerID, amount} = req.params
+    const finalizeInvoice = await createInvoice.invoices.finalizeInvoice('process.env.PAYSTACK_SECRET_KEY');
+
+ 
+    return axios({
+        method: "get",
+        url: `${process.env.PAYSTACK_SECRET_KEY}/invoice/finalizeInvoice`,
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${getToken.data.access_token}`
+        },
+        data: {
+                "invoiceID":invoiceID,
+                "amount": amount,
+                "useLocalAmount": false,
+                "customIdentity": uuidv4(),
+                "customenrPhone": {
+                "number": phoneNumber
+                }
+        }
+    })
+    
+}
+
+const updateInvoice = (req, res) => {
+    const { content_type, customerID, amount,} = req.param
+
+
+    res.status(201).send({
+        status: false,
+        message: "Find attached your invoice below for reference",
+        response: []
+    })
+}
+
+
+
+
 module.exports = {
-    createNewUser,
     getUser,
-    updateUser,
-    verifyOTP,
-    resendOtp
+    createInvoice,
+    listInvoice,
+    viewInvioce,
+    verifyInvioce,
+    sendNotification,
+    FinalizeInvoice,
+    updateInvoice
+ 
 }
